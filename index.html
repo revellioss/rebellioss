@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2048 Game - Telegram Mini App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .container {
+            max-width: 420px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .title {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .score-box {
+            background: #f0f0f0;
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .score-label {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+        }
+
+        .score {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .game-board {
+            background: #bbada0;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            aspect-ratio: 1;
+        }
+
+        .tile {
+            background: #cdc1b4;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 35px;
+            font-weight: bold;
+            color: #776e65;
+            transition: all 0.15s ease-in-out;
+        }
+
+        .tile-2 { background: #eee4da; }
+        .tile-4 { background: #ede0c8; }
+        .tile-8 { background: #f2b179; color: white; }
+        .tile-16 { background: #f59563; color: white; }
+        .tile-32 { background: #f67c5f; color: white; }
+        .tile-64 { background: #f65e3b; color: white; }
+        .tile-128 { background: #edcf72; color: #776e65; font-size: 30px; }
+        .tile-256 { background: #edcc61; color: #776e65; font-size: 30px; }
+        .tile-512 { background: #edc850; color: white; font-size: 30px; }
+        .tile-1024 { background: #edc53f; color: white; font-size: 25px; }
+        .tile-2048 { background: #edc22e; color: white; font-size: 25px; }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .stats {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .stat-item {
+            flex: 1;
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #999;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .game-over {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .game-over.show {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+        }
+
+        .modal h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title">2048</div>
+            <div class="score-box">
+                <div class="score-label">Score</div>
+                <div class="score" id="score">0</div>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-label">Best</div>
+                <div class="stat-value" id="best">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Moves</div>
+                <div class="stat-value" id="moves">0</div>
+            </div>
+        </div>
+
+        <div class="game-board" id="gameBoard"></div>
+
+        <div class="buttons">
+            <button class="btn btn-primary" onclick="newGame()">New Game</button>
+            <button class="btn btn-secondary" onclick="undo()">Undo</button>
+        </div>
+    </div>
+
+    <script>
+        const BOARD_SIZE = 4;
+        let board = [];
+        let score = 0;
+        let moves = 0;
+        let history = [];
+
+        function initGame() {
+            board = Array(16).fill(0);
+            score = 0;
+            moves = 0;
+            history = [];
+            addNewTile();
+            addNewTile();
+            render();
+        }
+
+        function addNewTile() {
+            const empty = board.map((v, i) => v === 0 ? i : null).filter(v => v !== null);
+            if (empty.length) {
+                const idx = empty[Math.floor(Math.random() * empty.length)];
+                board[idx] = Math.random() < 0.9 ? 2 : 4;
+            }
+        }
+
+        function moveLeft() {
+            let moved = false;
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                let row = board.slice(i * 4, i * 4 + 4);
+                row = compress(row);
+                row = merge(row);
+                row = compress(row);
+                if (JSON.stringify(row) !== JSON.stringify(board.slice(i * 4, i * 4 + 4))) {
+                    moved = true;
+                }
+                for (let j = 0; j < 4; j++) {
+                    board[i * 4 + j] = row[j];
+                }
+            }
+            return moved;
+        }
+
+        function rotate() {
+            const newBoard = Array(16).fill(0);
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                for (let j = 0; j < BOARD_SIZE; j++) {
+                    newBoard[j * 4 + (3 - i)] = board[i * 4 + j];
+                }
+            }
+            return newBoard;
+        }
+
+        function compress(arr) {
+            return arr.filter(v => v !== 0).concat(Array(4 - arr.filter(v => v !== 0).length).fill(0));
+        }
+
+        function merge(arr) {
+            for (let i = 0; i < 3; i++) {
+                if (arr[i] === arr[i + 1] && arr[i] !== 0) {
+                    arr[i] *= 2;
+                    score += arr[i];
+                    arr.splice(i + 1, 1);
+                    arr.push(0);
+                }
+            }
+            return arr;
+        }
+
+        function handleMove(direction) {
+            history.push(JSON.stringify(board));
+            let moved = false;
+
+            if (direction === 'left') moved = moveLeft();
+            else if (direction === 'right') {
+                board = rotate().reverse().map((_, i, a) => a[i]);
+                moved = moveLeft();
+            } else if (direction === 'up') {
+                board = rotate();
+                moved = moveLeft();
+            } else if (direction === 'down') {
+                for (let i = 0; i < 3; i++) board = rotate();
+                moved = moveLeft();
+            }
+
+            if (moved) {
+                addNewTile();
+                moves++;
+                render();
+            } else {
+                history.pop();
+            }
+        }
+
+        function render() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('moves').textContent = moves;
+            const gameBoard = document.getElementById('gameBoard');
+            gameBoard.innerHTML = '';
+            board.forEach(val => {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                if (val > 0) {
+                    tile.textContent = val;
+                    tile.classList.add(`tile-${val}`);
+                }
+                gameBoard.appendChild(tile);
+            });
+        }
+
+        function newGame() {
+            initGame();
+        }
+
+        function undo() {
+            if (history.length > 0) {
+                board = JSON.parse(history.pop());
+                render();
+            }
+        }
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (e.key.includes('Arrow')) {
+                const dir = e.key.replace('Arrow', '').toLowerCase();
+                handleMove(dir);
+            }
+        });
+
+        // Touch controls
+        let touchStartX, touchStartY;
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            const diffX = touchStartX - touchEndX;
+            const diffY = touchStartY - touchEndY;
+
+            if (Math.abs(diffX) > Math.abs(diffY)) {
+                handleMove(diffX > 0 ? 'left' : 'right');
+            } else {
+                handleMove(diffY > 0 ? 'up' : 'down');
+            }
+        });
+
+        initGame();
+    </script>
+</body>
+</html>
