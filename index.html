@@ -1,256 +1,564 @@
-import random
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2048 Game</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-def start_game():
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
 
-    # declaring an empty list then
-    # appending 4 list each with four
-    # elements as 0.
-    mat =[]
-    for i in range(4):
-        mat.append([0] * 4)
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 0;
+        }
 
-    # printing controls for user
-    print("Commands are as follows : ")
-    print("'W' or 'w' : Move Up")
-    print("'S' or 's' : Move Down")
-    print("'A' or 'a' : Move Left")
-    print("'D' or 'd' : Move Right")
+        .main-container {
+            width: 100%;
+            max-width: 500px;
+            padding: 20px;
+            text-align: center;
+        }
 
-    # calling the function to add
-    # a new 2 in grid after every step
-    add_new_2(mat)
-    return mat
+        h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
 
-def findEmpty(mat):
-    """Finds the first empty (0) cell in the grid."""
-    for i in range(4):
-        for j in range(4):
-            if mat[i][j] == 0:
-                return i, j  # Return the first found empty cell
-    return None, None  # No empty cells left
+        .info-panel {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
 
-# function to add a new 2 in
-# grid at any random empty cell
-def add_new_2(mat):
-    """Adds a new '2' in a random empty cell in the grid."""
-    if all(all(cell != 0 for cell in row) for row in mat):  
-        return  # No empty space left, avoid infinite loop
+        .score-box {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px 25px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            flex: 1;
+            min-width: 100px;
+        }
 
-    tries = 0
-    while tries < 30:
-        r = random.randint(0, 3)
-        c = random.randint(0, 3)
-        if mat[r][c] == 0:
-            mat[r][c] = 2
-            return  # Successfully placed a '2'
-        tries += 1
+        .score-label {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
 
-    # If random placement fails too many times, find an empty cell manually
-    r, c = findEmpty(mat)
-    if r is not None and c is not None:
-        mat[r][c] = 2
+        .score-number {
+            font-size: 32px;
+            font-weight: bold;
+        }
 
-# function to get the current
-# state of game
-def get_current_state(mat):
+        .game-board {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            width: 100%;
+            aspect-ratio: 1;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-gap: 8px;
+        }
 
-    # if any cell contains
-    # 2048 we have won
-    for i in range(4):
-        for j in range(4):
-            if(mat[i][j]== 2048):
-                return 'WON'
+        .cell {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+            transition: all 0.15s ease-in-out;
+            position: relative;
+            min-height: 50px;
+        }
 
-    # if we are still left with
-    # atleast one empty cell
-    # game is not yet over
-    for i in range(4):
-        for j in range(4):
-            if(mat[i][j]== 0):
-                return 'GAME NOT OVER'
+        /* Цвета плиток */
+        .tile-2 { background: #eee4da; color: #776e65; }
+        .tile-4 { background: #ede0c8; color: #776e65; }
+        .tile-8 { background: #f2b179; color: #f9f6f2; }
+        .tile-16 { background: #f59563; color: #f9f6f2; }
+        .tile-32 { background: #f67c5f; color: #f9f6f2; }
+        .tile-64 { background: #f65e3b; color: #f9f6f2; }
+        .tile-128 { background: #edcf72; color: #f9f6f2; font-size: 28px; }
+        .tile-256 { background: #edcc61; color: #f9f6f2; font-size: 28px; }
+        .tile-512 { background: #edc850; color: #f9f6f2; font-size: 28px; }
+        .tile-1024 { background: #edc53f; color: #f9f6f2; font-size: 24px; }
+        .tile-2048 { background: #edc22e; color: #f9f6f2; font-size: 24px; }
+        .tile-4096 { background: #eee4da; color: #776e65; font-size: 20px; }
 
-    # or if no cell is empty now
-    # but if after any move left, right,
-    # up or down, if any two cells
-    # gets merged and create an empty
-    # cell then also game is not yet over
-    for i in range(3):
-        for j in range(3):
-            if(mat[i][j]== mat[i + 1][j] or mat[i][j]== mat[i][j + 1]):
-                return 'GAME NOT OVER'
+        .tile-move {
+            animation: tileMove 0.15s ease-in-out;
+        }
 
-    for j in range(3):
-        if(mat[3][j]== mat[3][j + 1]):
-            return 'GAME NOT OVER'
+        .tile-new {
+            animation: tileNew 0.2s ease-in-out;
+        }
 
-    for i in range(3):
-        if(mat[i][3]== mat[i + 1][3]):
-            return 'GAME NOT OVER'
+        @keyframes tileMove {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
 
-    # else we have lost the game
-    return 'LOST'
+        @keyframes tileNew {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
 
-# all the functions defined below
-# are for left swap initially.
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
 
-# function to compress the grid
-# after every step before and
-# after merging cells.
-def compress(mat):
+        button {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s;
+            font-weight: bold;
+            min-width: 100px;
+        }
 
-    # bool variable to determine
-    # any change happened or not
-    changed = False
+        button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
 
-    # empty grid 
-    new_mat = []
+        button:active {
+            transform: translateY(0);
+        }
 
-    # with all cells empty
-    for i in range(4):
-        new_mat.append([0] * 4)
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .share-btn {
+            background: linear-gradient(45deg, #00d4ff, #0099cc);
+        }
+
+        .message {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .message.show {
+            opacity: 1;
+        }
+
+        .arrow-controls {
+            display: grid;
+            grid-template-columns: repeat(3, 60px);
+            gap: 5px;
+            margin: 20px auto;
+            justify-content: center;
+        }
+
+        .arrow-controls button {
+            width: 60px;
+            height: 60px;
+            padding: 0;
+            font-size: 24px;
+        }
+
+        .arrow-up { grid-column: 2; }
+        .arrow-down { grid-column: 2; }
+        .arrow-left { grid-column: 1; }
+        .arrow-right { grid-column: 3; }
+
+        @media (max-width: 600px) {
+            .main-container {
+                padding: 15px;
+            }
+
+            h1 {
+                font-size: 36px;
+                margin-bottom: 15px;
+            }
+
+            .game-board {
+                padding: 8px;
+                grid-gap: 6px;
+            }
+
+            .cell {
+                font-size: 24px;
+                min-height: 40px;
+            }
+
+            button {
+                padding: 10px 15px;
+                font-size: 12px;
+                min-width: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <h1>2048</h1>
         
-    # here we will shift entries
-    # of each cell to it's extreme
-    # left row by row
-    # loop to traverse rows
-    for i in range(4):
-        pos = 0
+        <div class="message" id="message"></div>
 
-        # loop to traverse each column
-        # in respective row
-        for j in range(4):
-            if(mat[i][j] != 0):
+        <div class="info-panel">
+            <div class="score-box">
+                <div class="score-label">Score</div>
+                <div class="score-number" id="score">0</div>
+            </div>
+            <div class="score-box">
+                <div class="score-label">Best</div>
+                <div class="score-number" id="bestScore">0</div>
+            </div>
+        </div>
+
+        <div class="game-board" id="gameBoard"></div>
+
+        <div class="arrow-controls" id="arrowControls">
+            <button class="arrow-up" data-dir="up">▲</button>
+            <button class="arrow-left" data-dir="left">◄</button>
+            <button class="arrow-down" data-dir="down">▼</button>
+            <button class="arrow-right" data-dir="right">►</button>
+        </div>
+
+        <div class="controls">
+            <button id="newGameBtn">New Game</button>
+            <button id="undoBtn" disabled>Undo</button>
+            <button class="share-btn" id="shareBtn">Share</button>
+        </div>
+    </div>
+
+    <script>
+        class Game2048 {
+            constructor() {
+                this.size = 4;
+                this.tiles = [];
+                this.score = 0;
+                this.bestScore = localStorage.getItem('bestScore2048') || 0;
+                this.gameOver = false;
+                this.won = false;
+                this.history = [];
                 
-                # if cell is non empty then
-                # we will shift it's number to
-                # previous empty cell in that row
-                # denoted by pos variable
-                new_mat[i][pos] = mat[i][j]
+                this.initGame();
+                this.setupListeners();
+                this.render();
+            }
+
+            initGame() {
+                this.tiles = Array(this.size * this.size).fill(0);
+                this.addNewTile();
+                this.addNewTile();
+                this.score = 0;
+                this.gameOver = false;
+                this.won = false;
+                this.history = [];
+                document.getElementById('undoBtn').disabled = true;
+            }
+
+            addNewTile() {
+                const emptyIndices = [];
+                this.tiles.forEach((tile, idx) => {
+                    if (tile === 0) emptyIndices.push(idx);
+                });
                 
-                if(j != pos):
-                    changed = True
-                pos += 1
+                if (emptyIndices.length > 0) {
+                    const randomIdx = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
+                    this.tiles[randomIdx] = Math.random() < 0.9 ? 2 : 4;
+                }
+            }
 
-    # returning new compressed matrix
-    # and the flag variable.
-    return new_mat, changed
+            getRow(r) {
+                return this.tiles.slice(r * this.size, (r + 1) * this.size);
+            }
 
-# function to merge the cells
-# in matrix after compressing
-def merge(mat):
-    
-    changed = False
-    
-    for i in range(4):
-        for j in range(3):
+            setRow(r, row) {
+                for (let c = 0; c < this.size; c++) {
+                    this.tiles[r * this.size + c] = row[c];
+                }
+            }
 
-            # if current cell has same value as
-            # next cell in the row and they
-            # are non empty then
-            if(mat[i][j] == mat[i][j + 1] and mat[i][j] != 0):
+            getCol(c) {
+                const col = [];
+                for (let r = 0; r < this.size; r++) {
+                    col.push(this.tiles[r * this.size + c]);
+                }
+                return col;
+            }
 
-                # double current cell value and
-                # empty the next cell
-                mat[i][j] = mat[i][j] * 2
-                mat[i][j + 1] = 0
+            setCol(c, col) {
+                for (let r = 0; r < this.size; r++) {
+                    this.tiles[r * this.size + c] = col[r];
+                }
+            }
 
-                # make bool variable True indicating
-                # the new grid after merging is
-                # different.
-                changed = True
+            move(direction) {
+                if (this.gameOver || this.won) return;
 
-    return mat, changed
+                const oldTiles = [...this.tiles];
+                this.history.push([...oldTiles, this.score]);
 
-# function to reverse the matrix
-# means reversing the content of
-# each row (reversing the sequence)
-def reverse(mat):
-    new_mat =[]
-    for i in range(4):
-        new_mat.append([])
-        for j in range(4):
-            new_mat[i].append(mat[i][3 - j])
-    return new_mat
+                if (direction === 'left') this.moveLeft();
+                else if (direction === 'right') this.moveRight();
+                else if (direction === 'up') this.moveUp();
+                else if (direction === 'down') this.moveDown();
 
-# function to get the transpose
-# of matrix means interchanging
-# rows and column
-def transpose(mat):
-    new_mat = []
-    for i in range(4):
-        new_mat.append([])
-        for j in range(4):
-            new_mat[i].append(mat[j][i])
-    return new_mat
+                if (JSON.stringify(oldTiles) !== JSON.stringify(this.tiles)) {
+                    this.addNewTile();
+                    this.checkGameState();
+                    this.render();
+                } else {
+                    this.history.pop();
+                }
 
-# function to update the matrix
-# if we move / swipe left
-def move_left(grid):
+                document.getElementById('undoBtn').disabled = this.history.length === 0;
+            }
 
-    # first compress the grid
-    new_grid, changed1 = compress(grid)
+            moveLeft() {
+                for (let r = 0; r < this.size; r++) {
+                    let row = this.getRow(r);
+                    row = this.compress(row);
+                    row = this.merge(row);
+                    row = this.compress(row);
+                    this.setRow(r, row);
+                }
+            }
 
-    # then merge the cells.
-    new_grid, changed2 = merge(new_grid)
-    
-    changed = changed1 or changed2
+            moveRight() {
+                for (let r = 0; r < this.size; r++) {
+                    let row = this.getRow(r).reverse();
+                    row = this.compress(row);
+                    row = this.merge(row);
+                    row = this.compress(row);
+                    this.setRow(r, row.reverse());
+                }
+            }
 
-    # again compress after merging.
-    new_grid, temp = compress(new_grid)
+            moveUp() {
+                for (let c = 0; c < this.size; c++) {
+                    let col = this.getCol(c);
+                    col = this.compress(col);
+                    col = this.merge(col);
+                    col = this.compress(col);
+                    this.setCol(c, col);
+                }
+            }
 
-    # return new matrix and bool changed
-    # telling whether the grid is same
-    # or different
-    return new_grid, changed
+            moveDown() {
+                for (let c = 0; c < this.size; c++) {
+                    let col = this.getCol(c).reverse();
+                    col = this.compress(col);
+                    col = this.merge(col);
+                    col = this.compress(col);
+                    this.setCol(c, col.reverse());
+                }
+            }
 
-# function to update the matrix
-# if we move / swipe right
-def move_right(grid):
+            compress(arr) {
+                return arr.filter(val => val !== 0).concat(Array(this.size - arr.filter(val => val !== 0).length).fill(0));
+            }
 
-    # to move right we just reverse
-    # the matrix 
-    new_grid = reverse(grid)
+            merge(arr) {
+                for (let i = 0; i < arr.length - 1; i++) {
+                    if (arr[i] === arr[i + 1] && arr[i] !== 0) {
+                        arr[i] *= 2;
+                        this.score += arr[i];
+                        arr.splice(i + 1, 1);
+                        arr.push(0);
+                    }
+                }
+                return arr;
+            }
 
-    # then move left
-    new_grid, changed = move_left(new_grid)
+            checkGameState() {
+                // Проверка на победу
+                if (this.tiles.some(tile => tile === 2048)) {
+                    this.won = true;
+                    this.showMessage('🎉 You Won!');
+                    return;
+                }
 
-    # then again reverse matrix will
-    # give us desired result
-    new_grid = reverse(new_grid)
-    return new_grid, changed
+                // Проверка на поражение
+                if (!this.canMove()) {
+                    this.gameOver = true;
+                    this.showMessage('Game Over!');
+                    this.updateBestScore();
+                }
+            }
 
-# function to update the matrix
-# if we move / swipe up
-def move_up(grid):
+            canMove() {
+                // Проверка на пустые клетки
+                if (this.tiles.some(tile => tile === 0)) return true;
 
-    # to move up we just take
-    # transpose of matrix
-    new_grid = transpose(grid)
+                // Проверка возможности слияния
+                for (let r = 0; r < this.size; r++) {
+                    for (let c = 0; c < this.size; c++) {
+                        const idx = r * this.size + c;
+                        const current = this.tiles[idx];
+                        if (c < this.size - 1 && current === this.tiles[idx + 1]) return true;
+                        if (r < this.size - 1 && current === this.tiles[idx + this.size]) return true;
+                    }
+                }
+                return false;
+            }
 
-    # then move left (calling all
-    # included functions) then
-    new_grid, changed = move_left(new_grid)
+            updateBestScore() {
+                if (this.score > this.bestScore) {
+                    this.bestScore = this.score;
+                    localStorage.setItem('bestScore2048', this.bestScore);
+                }
+            }
 
-    # again take transpose will give
-    # desired results
-    new_grid = transpose(new_grid)
-    return new_grid, changed
+            undo() {
+                if (this.history.length === 0) return;
+                const lastState = this.history.pop();
+                this.score = lastState[lastState.length - 1];
+                this.tiles = lastState.slice(0, lastState.length - 1);
+                this.gameOver = false;
+                this.won = false;
+                document.getElementById('message').classList.remove('show');
+                this.render();
+                document.getElementById('undoBtn').disabled = this.history.length === 0;
+            }
 
-# function to update the matrix
-# if we move / swipe down
-def move_down(grid):
+            showMessage(text) {
+                const msgEl = document.getElementById('message');
+                msgEl.textContent = text;
+                msgEl.classList.add('show');
+            }
 
-    # to move down we take transpose
-    new_grid = transpose(grid)
+            render() {
+                const board = document.getElementById('gameBoard');
+                board.innerHTML = '';
 
-    # move right and then again
-    new_grid, changed = move_right(new_grid)
+                this.tiles.forEach(tile => {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    
+                    if (tile !== 0) {
+                        cell.classList.add(`tile-${tile}`);
+                        cell.textContent = tile;
+                    }
+                    
+                    board.appendChild(cell);
+                });
 
-    # take transpose will give desired
-    # results.
-    new_grid = transpose(new_grid)
-    return new_grid, changed
+                document.getElementById('score').textContent = this.score;
+                document.getElementById('bestScore').textContent = this.bestScore;
+            }
 
-# this file only contains all the logic
-# functions to be called in main function
-# present in the other file
+            shareScore() {
+                const text = `I scored ${this.score} points in 2048!`;
+                
+                if (window.Telegram?.WebApp) {
+                    window.Telegram.WebApp.showAlert(text);
+                } else if (navigator.share) {
+                    navigator.share({
+                        title: '2048',
+                        text: text,
+                        url: window.location.href
+                    });
+                } else {
+                    navigator.clipboard.writeText(text);
+                    alert('Score copied to clipboard!');
+                }
+            }
+
+            setupListeners() {
+                // Keyboard
+                document.addEventListener('keydown', (e) => {
+                    const dirs = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+                    if (dirs[e.key]) {
+                        e.preventDefault();
+                        this.move(dirs[e.key]);
+                    }
+                });
+
+                // Touch/Swipe
+                let startX = 0, startY = 0;
+                document.addEventListener('touchstart', (e) => {
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                });
+                
+                document.addEventListener('touchend', (e) => {
+                    const endX = e.changedTouches[0].clientX;
+                    const endY = e.changedTouches[0].clientY;
+                    const dx = startX - endX;
+                    const dy = startY - endY;
+
+                    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+                        this.move(dx > 0 ? 'left' : 'right');
+                    } else if (Math.abs(dy) > 50) {
+                        this.move(dy > 0 ? 'up' : 'down');
+                    }
+                });
+
+                // Button controls
+                document.getElementById('newGameBtn').addEventListener('click', () => {
+                    this.initGame();
+                    document.getElementById('message').classList.remove('show');
+                    this.render();
+                });
+
+                document.getElementById('undoBtn').addEventListener('click', () => this.undo());
+                document.getElementById('shareBtn').addEventListener('click', () => this.shareScore());
+
+                // Arrow button controls
+                document.querySelectorAll('.arrow-controls button').forEach(btn => {
+                    btn.addEventListener('click', () => this.move(btn.dataset.dir));
+                });
+
+                // Telegram
+                if (window.Telegram?.WebApp) {
+                    window.Telegram.WebApp.ready();
+                    window.Telegram.WebApp.expand();
+                }
+            }
+        }
+
+        window.addEventListener('load', () => {
+            new Game2048();
+        });
+    </script>
+</body>
+</html>
