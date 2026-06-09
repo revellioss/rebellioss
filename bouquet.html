@@ -7,262 +7,328 @@
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
-  min-height:100vh;
-  background: linear-gradient(155deg,#fff0f5 0%,#ffe4ef 45%,#ffd6e7 100%);
-  display:flex; flex-direction:column; align-items:center;
-  overflow-x:hidden;
-  font-family: Georgia,'Times New Roman',serif;
+  min-height: 100vh;
+  background: linear-gradient(155deg, #fff0f5 0%, #ffe4ef 45%, #ffd6e7 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-x: hidden;
+  font-family: Georgia, 'Times New Roman', serif;
 }
-#scene {
-  width:100%; max-width:580px;
-  padding:16px 8px 0;
-  display:flex; flex-direction:column; align-items:center;
+#wrap {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 8px 0;
 }
-#bouquet-wrap { width:100%; max-width:500px; }
-#bouquet-svg  { width:100%; height:auto; display:block; overflow:visible; }
-
-/* Each flower is positioned by SVG translate; the inner .bloom-target
-   handles scale so there's zero CSS/SVG-attribute conflict             */
-.bloom-target {
-  transform: scale(0);
-  transform-box: fill-box;
-  transform-origin: center center;
-  transition: transform 0.55s cubic-bezier(0.34,1.56,0.64,1);
+canvas {
+  width: 100%;
+  max-width: 520px;
+  height: auto;
+  display: block;
 }
-.bloom-target.open { transform: scale(1); }
-
-/* Sway — applied to the outer <g> that already holds the translate */
-@keyframes sw1 { 0%,100%{transform:rotate(-1.6deg)} 50%{transform:rotate(1.6deg)} }
-@keyframes sw2 { 0%,100%{transform:rotate(1.2deg)}  50%{transform:rotate(-2deg)  } }
-@keyframes sw3 { 0%,100%{transform:rotate(-2deg)  } 50%{transform:rotate(1.2deg) } }
-.sw1 { animation:sw1 4s   ease-in-out infinite; transform-box:fill-box; transform-origin:center 80%; }
-.sw2 { animation:sw2 4.6s ease-in-out infinite; transform-box:fill-box; transform-origin:center 80%; }
-.sw3 { animation:sw3 5.3s ease-in-out infinite; transform-box:fill-box; transform-origin:center 80%; }
-
-#message {
-  max-width:450px; width:90%;
-  text-align:center;
-  margin:6px auto 50px;
-  opacity:0; transform:translateY(22px);
-  transition: opacity 2s ease, transform 2s ease;
-  padding:0 12px;
+#msg {
+  max-width: 460px;
+  width: 90%;
+  text-align: center;
+  margin: 6px auto 50px;
+  padding: 0 12px;
 }
-#message.show { opacity:1; transform:translateY(0); }
-#message p {
-  font-size: clamp(15px,4vw,21px);
-  line-height:1.82; color:#8b2252;
-  font-style:italic; letter-spacing:0.03em;
+#msg p {
+  font-size: clamp(15px, 4.2vw, 21px);
+  line-height: 1.82;
+  color: #8b2252;
+  font-style: italic;
+  letter-spacing: 0.03em;
 }
-
-/* Floating hearts */
 .hf {
-  position:fixed; bottom:-36px;
-  pointer-events:none; user-select:none;
-  animation:fup linear infinite; opacity:0;
+  position: fixed;
+  bottom: -36px;
+  pointer-events: none;
+  user-select: none;
+  animation: fup linear infinite;
+  opacity: 0;
 }
 @keyframes fup {
-  0%  {transform:translateY(0)   rotate(-8deg); opacity:0}
-  8%  {opacity:.55}
-  92% {opacity:.28}
-  100%{transform:translateY(-108vh) rotate(8deg); opacity:0}
+  0%   { transform: translateY(0)      rotate(-8deg); opacity: 0; }
+  8%   { opacity: .45; }
+  92%  { opacity: .22; }
+  100% { transform: translateY(-108vh) rotate(8deg);  opacity: 0; }
 }
 </style>
 </head>
 <body>
-<div id="scene">
-  <div id="bouquet-wrap">
-    <svg id="bouquet-svg" viewBox="0 0 500 560" xmlns="http://www.w3.org/2000/svg"></svg>
-  </div>
-  <div id="message"><p></p></div>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div id="msg"><p></p></div>
 </div>
 
 <script>
-// ── EDIT MESSAGE HERE ────────────────────────────────────────────────────────
+// ── EDIT TEXT ────────────────────────────────────────────────────────────────
 const MESSAGE = "Ты самое лучшее, что случалось в моей жизни. Я очень рад, что мы с тобой вместе. Я очень сильно тебя люблю. Ты самая невообразимая женщина, которую я только встречал в своей жизни.";
 // ────────────────────────────────────────────────────────────────────────────
 
-const NS  = "http://www.w3.org/2000/svg";
-const svg = document.getElementById("bouquet-svg");
+const canvas = document.getElementById("c");
+// 520×580 logical pixels
+canvas.width  = 520;
+canvas.height = 580;
+const ctx = canvas.getContext("2d");
 
-const mkEl = (tag, a, p) => {
-  const e = document.createElementNS(NS, tag);
-  for (const [k,v] of Object.entries(a||{})) e.setAttribute(k,v);
-  p && p.appendChild(e);
-  return e;
-};
-const rnd  = (a,b) => a + Math.random()*(b-a);
-const rndI = (a,b) => Math.floor(rnd(a,b+1));
+const rnd  = (a, b) => a + Math.random() * (b - a);
+const rndI = (a, b) => Math.floor(rnd(a, b + 1));
+const TAU  = Math.PI * 2;
 
-// Palette: [outer, mid, inner, stroke, center]
-const PAL = [
-  ["#ffd1dc","#f9a8be","#f07898","#c85878","#f5d060"],
-  ["#fce4ef","#f9c0d4","#f598b8","#d07898","#f8e060"],
-  ["#fff2e0","#ffddb0","#ffbe78","#d09050","#f0d050"],
-  ["#fff6ee","#ffecd8","#ffd8b0","#c89870","#f5d058"],
-  ["#fde0f0","#f9b8d8","#f090be","#c06890","#f8d858"],
-  ["#ffe6e6","#ffc0c8","#f998a8","#d07080","#f4d055"],
-  ["#fff0fa","#ffd4ec","#ffb0d8","#d080ac","#f5d860"],
-  ["#ffd4c0","#ffb498","#f99070","#c86848","#f0cc50"],
-];
+// ── Petal drawing ────────────────────────────────────────────────────────────
+// Draws one petal pointing "up" (negative Y) from origin, then ctx.restore
+function petal(ctx, len, wid, c1, c2, strokeCol) {
+  const grad = ctx.createLinearGradient(0, 0, 0, -len);
+  grad.addColorStop(0,   c1);   // base (near center)
+  grad.addColorStop(0.55, c2);  // mid
+  grad.addColorStop(1,   "#fff8f5"); // tip highlight
 
-// ── Draw one ranunculus into parent <g> at local (0,0) ─────────────────────
-function drawRanunculus(parent, r, pal) {
-  const [c0,c1,c2,cs,cc] = pal;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.bezierCurveTo(-wid, -len * 0.28,  -wid * 0.85, -len * 0.72,  0, -len);
+  ctx.bezierCurveTo( wid * 0.85, -len * 0.72,   wid, -len * 0.28,  0,  0);
+  ctx.fillStyle   = grad;
+  ctx.fill();
+  ctx.strokeStyle = strokeCol;
+  ctx.lineWidth   = 0.4;
+  ctx.stroke();
+}
 
-  // 8 layers of petals. Each petal = rotated ellipse around origin.
-  // layer: [count, distFrac, rx, ry, color]
+// ── Draw one ranunculus at (cx, cy) with given radius ────────────────────────
+// Palette: { outer, mid, inner, stroke }
+function drawFlower(cx, cy, R, pal, globalAngle) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(globalAngle);
+
+  // Layer spec: [petalCount, lenFrac, widFrac, colorKey, layerTwist]
   const layers = [
-    [5,  0.10, r*.17, r*.25, c2],
-    [6,  0.20, r*.18, r*.27, c2],
-    [7,  0.32, r*.19, r*.29, c1],
-    [8,  0.44, r*.19, r*.30, c1],
-    [9,  0.56, r*.19, r*.30, c0],
-    [10, 0.67, r*.18, r*.29, c0],
-    [11, 0.78, r*.17, r*.28, c0],
-    [12, 0.88, r*.16, r*.26, c0],
+    // outer (large flat petals)
+    { n:13, lf:0.88, wf:0.30, c1:pal.outer,  c2:pal.mid,   twist: 0   },
+    { n:12, lf:0.82, wf:0.28, c1:pal.outer,  c2:pal.mid,   twist: 14  },
+    { n:11, lf:0.74, wf:0.27, c1:pal.mid,    c2:pal.inner, twist: 7   },
+    { n:10, lf:0.66, wf:0.25, c1:pal.mid,    c2:pal.inner, twist: 18  },
+    // middle
+    { n:9,  lf:0.56, wf:0.23, c1:pal.mid,    c2:pal.inner, twist: 4   },
+    { n:8,  lf:0.46, wf:0.21, c1:pal.inner,  c2:pal.deep,  twist: 22  },
+    { n:7,  lf:0.36, wf:0.18, c1:pal.inner,  c2:pal.deep,  twist: 11  },
+    // inner tight
+    { n:6,  lf:0.26, wf:0.15, c1:pal.deep,   c2:pal.deep,  twist: 5   },
+    { n:5,  lf:0.17, wf:0.11, c1:pal.deep,   c2:pal.deep,  twist: 16  },
+    { n:4,  lf:0.10, wf:0.08, c1:pal.deep,   c2:pal.deep,  twist: 0   },
   ];
 
-  layers.forEach(([n, df, rx, ry, col]) => {
-    const dist = r * df;
+  layers.forEach(({ n, lf, wf, c1, c2, twist }) => {
+    const len = R * lf;
+    const wid = R * wf;
     for (let i = 0; i < n; i++) {
-      const deg = (360/n)*i;
-      const rad = deg * Math.PI/180;
-      // Center of this ellipse is offset from origin
-      const ex = Math.cos(rad) * dist;
-      const ey = Math.sin(rad) * dist;
-      mkEl("ellipse", {
-        cx: ex, cy: ey,
-        rx, ry,
-        fill: col,
-        stroke: cs,
-        "stroke-width": "0.3",
-        opacity: "0.92",
-        transform: `rotate(${deg}, ${ex}, ${ey})`
-      }, parent);
+      const angle = (TAU / n) * i + (twist * Math.PI / 180);
+      ctx.save();
+      ctx.rotate(angle);
+      petal(ctx, len, wid, c1, c2, pal.stroke);
+      ctx.restore();
     }
   });
 
-  // Center
-  mkEl("circle", {cx:0,cy:0, r:r*.14, fill:cc, stroke:"#c4a028","stroke-width":"0.5"}, parent);
-  mkEl("circle", {cx:0,cy:0, r:r*.07, fill:"#ddb020"}, parent);
+  // Center pistil
+  const cg = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.14);
+  cg.addColorStop(0,   "#f8e030");
+  cg.addColorStop(0.6, "#e8c020");
+  cg.addColorStop(1,   "#c89810");
+  ctx.beginPath();
+  ctx.arc(0, 0, R * 0.14, 0, TAU);
+  ctx.fillStyle = cg;
+  ctx.fill();
+  // Pistil texture dots
+  for (let i = 0; i < 7; i++) {
+    const da = (TAU / 7) * i;
+    ctx.beginPath();
+    ctx.arc(Math.cos(da)*R*0.07, Math.sin(da)*R*0.07, R*0.025, 0, TAU);
+    ctx.fillStyle = "#c08808";
+    ctx.fill();
+  }
+
+  ctx.restore();
 }
 
-// ── 101 positions via golden-angle spiral ──────────────────────────────────
-const BX = 250, BY = 268, MAX_R = 148, TOTAL = 101;
-const PHI = 137.508 * Math.PI / 180;
+// ── Palettes ──────────────────────────────────────────────────────────────────
+const PALS = [
+  { outer:"#ffd1dc", mid:"#f9a8be", inner:"#f0708e", deep:"#d44878", stroke:"#c84070" }, // pink
+  { outer:"#fce8f0", mid:"#f8c4d8", inner:"#f298b8", deep:"#d0709a", stroke:"#c06090" }, // blush
+  { outer:"#fff4e0", mid:"#ffdea8", inner:"#ffc068", deep:"#e89040", stroke:"#c87830" }, // peach
+  { outer:"#fff8f0", mid:"#ffecd4", inner:"#ffd8a8", deep:"#d4a868", stroke:"#b88848" }, // cream
+  { outer:"#fde0f2", mid:"#f8b4d8", inner:"#f080b8", deep:"#c85898", stroke:"#b04888" }, // mauve
+  { outer:"#ffe6e8", mid:"#ffc0c8", inner:"#f894a0", deep:"#d06878", stroke:"#b85060" }, // coral-pink
+  { outer:"#fff2fc", mid:"#ffd4f0", inner:"#ffaada", deep:"#d880b8", stroke:"#b868a0" }, // lavender-pink
+  { outer:"#ffd8c4", mid:"#ffb498", inner:"#f88c68", deep:"#c86040", stroke:"#a84830" }, // deep peach
+];
 
-const pos = [];
+// ── Layout: 101 flowers ───────────────────────────────────────────────────────
+const BX = 260, BY = 272, MAX_R = 152, TOTAL = 101;
+const GOLDEN = 137.508 * Math.PI / 180;
+
+const flowers = [];
 for (let i = 0; i < TOTAL; i++) {
-  const t = i / TOTAL;
-  const r = Math.sqrt(t) * MAX_R;
-  const a = i * PHI;
-  pos.push({
-    x: BX + r*Math.cos(a),
-    y: BY + r*Math.sin(a)*0.80,   // slight vertical squash for natural look
-    sz: Math.max(13, 30 - t*14),  // center flowers bigger
-    pal: PAL[rndI(0, PAL.length-1)],
-    rot: rnd(-180, 180),
+  const t     = i / TOTAL;
+  const dist  = Math.sqrt(t) * MAX_R;
+  const angle = i * GOLDEN;
+  flowers.push({
+    x:   BX + dist * Math.cos(angle),
+    y:   BY + dist * Math.sin(angle) * 0.78,
+    r:   Math.max(12, 30 - t * 14),
+    pal: PALS[rndI(0, PALS.length - 1)],
+    rot: rnd(-Math.PI, Math.PI),
   });
 }
-pos.sort((a,b) => a.y - b.y); // back-to-front
+// Sort back-to-front so foreground flowers overlap background ones
+flowers.sort((a, b) => a.y - b.y);
 
-// ── Wrapping paper layer ───────────────────────────────────────────────────
-const wG = mkEl("g",{},svg);
+// ── Draw stems ────────────────────────────────────────────────────────────────
+flowers.forEach(f => {
+  const ex = BX + (f.x - BX) * 0.08;
+  const ey = 374;
+  ctx.beginPath();
+  ctx.moveTo(f.x, f.y + f.r * 0.3);
+  // slight curve via quadratic
+  ctx.quadraticCurveTo(
+    f.x * 0.6 + ex * 0.4, (f.y + ey) * 0.5 + rnd(-10, 10),
+    ex, ey
+  );
+  ctx.strokeStyle = `rgba(72,130,55,${rnd(0.45, 0.7)})`;
+  ctx.lineWidth   = Math.max(0.6, f.r * 0.055);
+  ctx.lineCap     = "round";
+  ctx.stroke();
+});
 
-mkEl("ellipse",{cx:BX,cy:506,rx:118,ry:17,fill:"rgba(0,0,0,0.055)"},wG);
+// ── Draw leaves ───────────────────────────────────────────────────────────────
+[
+  [BX-90, 348, -1, 28, 46],
+  [BX+80, 342,  1, 26, 44],
+  [BX-58, 362, -1, 22, 38],
+  [BX+64, 358,  1, 22, 38],
+  [BX-112,334, -1, 30, 50],
+  [BX+100,328,  1, 28, 48],
+  [BX-32, 370, -1, 18, 32],
+  [BX+40, 367,  1, 18, 32],
+].forEach(([lx, ly, s, w, h]) => {
+  ctx.save();
+  ctx.translate(lx, ly);
+  ctx.rotate(s * rnd(0.1, 0.35));
+  const lg = ctx.createLinearGradient(0, 0, s * w, -h);
+  lg.addColorStop(0,   "#4a8838");
+  lg.addColorStop(0.5, "#72b855");
+  lg.addColorStop(1,   "#5aa040");
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.bezierCurveTo(s*w*0.3, -h*0.15,  s*w*0.9, -h*0.3,  s*w, -h*0.5);
+  ctx.bezierCurveTo(s*w*0.9, -h*0.7,   s*w*0.3, -h*0.85, 0,  -h);
+  ctx.bezierCurveTo(s*w*0.1, -h*0.6,   s*w*0.05,-h*0.3,  0,   0);
+  ctx.fillStyle = lg;
+  ctx.fill();
+  ctx.strokeStyle = "#3a7028";
+  ctx.lineWidth = 0.5;
+  ctx.stroke();
+  ctx.restore();
+});
 
-// Left & right panels
-mkEl("path",{d:`M${BX-112} 382 L${BX-46} 506 L${BX} 516 L${BX} 382 Z`,
-  fill:"#fde4f0",stroke:"#efc0d4","stroke-width":"1"},wG);
-mkEl("path",{d:`M${BX+112} 382 L${BX+46} 506 L${BX} 516 L${BX} 382 Z`,
-  fill:"#fcd8e8",stroke:"#efc0d4","stroke-width":"1"},wG);
-// Front panel
-mkEl("path",{d:`M${BX-93} 396 Q${BX} 420 ${BX+93} 396 L${BX+53} 513 Q${BX} 523 ${BX-53} 513 Z`,
-  fill:"#fff0f6",stroke:"#f4c0d4","stroke-width":"1"},wG);
-// Dots on wrap
-for(let i=0;i<22;i++)
-  mkEl("circle",{cx:rnd(BX-82,BX+82),cy:rnd(406,510),r:rnd(1.8,3.8),fill:"#f4a8c8",opacity:"0.4"},wG);
+// ── Draw wrapping paper ───────────────────────────────────────────────────────
+// Shadow
+ctx.beginPath();
+ctx.ellipse(BX, 500, 116, 16, 0, 0, TAU);
+ctx.fillStyle = "rgba(0,0,0,0.05)";
+ctx.fill();
 
-// Ribbon bar
-mkEl("rect",{x:BX-96,y:376,width:192,height:14,rx:5,fill:"#ee6888"},wG);
-// Bow left
-mkEl("ellipse",{cx:BX-25,cy:379,rx:26,ry:15,fill:"#e45070",
-  transform:`rotate(-30,${BX-25},379)`},wG);
-// Bow right
-mkEl("ellipse",{cx:BX+25,cy:379,rx:26,ry:15,fill:"#e45070",
-  transform:`rotate(30,${BX+25},379)`},wG);
+function wrapPanel(x1,y1, x2,y2, x3,y3, x4,y4, col) {
+  ctx.beginPath();
+  ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+  ctx.lineTo(x3,y3); ctx.lineTo(x4,y4);
+  ctx.closePath();
+  ctx.fillStyle = col;
+  ctx.fill();
+  ctx.strokeStyle = "#efc0d0";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+wrapPanel(BX-114,372, BX-46,498, BX,508, BX,372,   "#fde4f0");
+wrapPanel(BX+114,372, BX+46,498, BX,508, BX,372,   "#fcd8e8");
+
+// Front panel (curved top)
+ctx.beginPath();
+ctx.moveTo(BX-96,384);
+ctx.quadraticCurveTo(BX, 406, BX+96, 384);
+ctx.lineTo(BX+54,506);
+ctx.quadraticCurveTo(BX, 516, BX-54, 506);
+ctx.closePath();
+ctx.fillStyle = "#fff0f6";
+ctx.fill();
+ctx.strokeStyle = "#f4c0d4";
+ctx.lineWidth = 1;
+ctx.stroke();
+
+// Polka dots
+for (let i = 0; i < 22; i++) {
+  ctx.beginPath();
+  ctx.arc(rnd(BX-84,BX+84), rnd(394,504), rnd(2,4), 0, TAU);
+  ctx.fillStyle = `rgba(240,160,190,${rnd(0.2,0.45)})`;
+  ctx.fill();
+}
+
+// Ribbon
+const ribG = ctx.createLinearGradient(0,368,0,386);
+ribG.addColorStop(0, "#f07898");
+ribG.addColorStop(1, "#d84068");
+ctx.beginPath();
+ctx.roundRect(BX-96, 368, 192, 14, 5);
+ctx.fillStyle = ribG;
+ctx.fill();
+
+// Bow loops
+function bowLoop(cx, cy, rx, ry, rot, col) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(rot);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, rx, ry, 0, 0, TAU);
+  ctx.fillStyle = col;
+  ctx.fill();
+  ctx.restore();
+}
+bowLoop(BX-26, 370, 27, 15, -0.52, "#e84870");
+bowLoop(BX+26, 370, 27, 15,  0.52, "#e84870");
+
 // Knot
-mkEl("circle",{cx:BX,cy:383,r:11,fill:"#cc2e56"},wG);
-mkEl("circle",{cx:BX,cy:383,r:5,fill:"#aa1840"},wG);
+const kg = ctx.createRadialGradient(BX,374,0, BX,374,12);
+kg.addColorStop(0, "#e03060");
+kg.addColorStop(1, "#b01848");
+ctx.beginPath();
+ctx.arc(BX, 374, 12, 0, TAU);
+ctx.fillStyle = kg;
+ctx.fill();
+ctx.beginPath();
+ctx.arc(BX, 374, 5, 0, TAU);
+ctx.fillStyle = "#901030";
+ctx.fill();
 
-// ── Stems layer ────────────────────────────────────────────────────────────
-const stG = mkEl("g",{},svg);
-pos.forEach(p=>{
-  mkEl("line",{
-    x1:p.x, y1:p.y + p.sz*.3,
-    x2:BX+(p.x-BX)*.10, y2:383,
-    stroke:"#588840",
-    "stroke-width":Math.max(0.7, p.sz*.06),
-    "stroke-linecap":"round", opacity:"0.6"
-  },stG);
-});
+// ── Draw all flowers ──────────────────────────────────────────────────────────
+flowers.forEach(f => drawFlower(f.x, f.y, f.r, f.pal, f.rot));
 
-// ── Leaves ────────────────────────────────────────────────────────────────
-const lG = mkEl("g",{},svg);
-[[BX-90,356,-1],[BX+80,350,1],[BX-56,370,-1],[BX+62,366,1],
- [BX-110,344,-1],[BX+98,340,1],[BX-30,378,-1],[BX+36,374,1]]
-.forEach(([lx,ly,s])=>{
-  mkEl("path",{
-    d:`M${lx} ${ly} Q${lx+s*28} ${ly-25} ${lx+s*15} ${ly-44} Q${lx+s*2} ${ly-22} ${lx} ${ly}`,
-    fill:"#66aa50",stroke:"#488838","stroke-width":"0.6",opacity:"0.87"
-  },lG);
-});
+// ── Text ───────────────────────────────────────────────────────────────────────
+document.querySelector("#msg p").textContent = MESSAGE;
 
-// ── Flowers ────────────────────────────────────────────────────────────────
-// Architecture: outer <g translate> holds position (SVG attr, never touched by JS).
-//               inner <g.bloom-target> is what we scale via CSS class toggle.
-// This avoids any CSS↔SVG-attribute transform conflict.
-const swayClasses = ["sw1","sw2","sw3"];
-const bloomTargets = [];
-
-pos.forEach((p, i) => {
-  // Outer group: just position + rotation (SVG attribute — never modified by JS)
-  const outer = mkEl("g",{transform:`translate(${p.x} ${p.y}) rotate(${p.rot})`},svg);
-
-  // Inner group: bloom scale target
-  const inner = mkEl("g",{},outer);
-  inner.classList.add("bloom-target");
-  bloomTargets.push({ el:inner, outer, swayClass: swayClasses[i%3] });
-
-  drawRanunculus(inner, p.sz, p.pal);
-});
-
-// ── Trigger bloom one by one ───────────────────────────────────────────────
-bloomTargets.forEach(({el, outer, swayClass}, i) => {
-  setTimeout(()=>{
-    el.classList.add("open");
-    // After open transition, switch to sway on the outer group
-    setTimeout(()=>{
-      el.style.transition = "none"; // stop transition interference
-      outer.classList.add(swayClass);
-    }, 700);
-  }, 150 + i*32);
-});
-
-// ── Show text ──────────────────────────────────────────────────────────────
-setTimeout(()=>{
-  document.querySelector("#message p").textContent = MESSAGE;
-  document.getElementById("message").classList.add("show");
-}, 150 + TOTAL*32 + 1000);
-
-// ── Floating hearts ────────────────────────────────────────────────────────
-"♥❤💕🌸✿❀".split("").concat(["♥","❤","💕"]).forEach((ch,i)=>{
+// ── Floating hearts ────────────────────────────────────────────────────────────
+"♥❤💕🌸✿❀♥❤💕🌸♥❤💕🌸✿".split("").forEach(ch => {
   const h = document.createElement("span");
   h.className = "hf";
   h.textContent = ch;
-  h.style.cssText = `left:${rnd(2,96)}vw;font-size:${rnd(10,19)}px;`
-    +`animation-duration:${rnd(7,15)}s;animation-delay:${rnd(0,13)}s;`
-    +`color:${["#f47090","#e85070","#ffaac0","#ff80a0","#f090a8"][rndI(0,4)]};`;
+  h.style.cssText = `left:${rnd(2,96)}vw;font-size:${rnd(10,18)}px;`
+    + `animation-duration:${rnd(7,16)}s;animation-delay:${rnd(0,14)}s;`
+    + `color:${["#f47090","#e85070","#ffaac0","#ff80a0","#f090a8"][rndI(0,4)]};`;
   document.body.appendChild(h);
 });
 </script>
