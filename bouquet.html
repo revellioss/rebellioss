@@ -5,300 +5,266 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Для тебя 💕</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  min-height:100vh;
+  background: linear-gradient(155deg,#fff0f5 0%,#ffe4ef 45%,#ffd6e7 100%);
+  display:flex; flex-direction:column; align-items:center;
+  overflow-x:hidden;
+  font-family: Georgia,'Times New Roman',serif;
+}
+#scene {
+  width:100%; max-width:580px;
+  padding:16px 8px 0;
+  display:flex; flex-direction:column; align-items:center;
+}
+#bouquet-wrap { width:100%; max-width:500px; }
+#bouquet-svg  { width:100%; height:auto; display:block; overflow:visible; }
 
-  body {
-    min-height: 100vh;
-    background: linear-gradient(160deg, #fff0f5 0%, #ffe4ef 40%, #ffd6e7 100%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    overflow-x: hidden;
-    font-family: Georgia, 'Times New Roman', serif;
-  }
+/* Each flower is positioned by SVG translate; the inner .bloom-target
+   handles scale so there's zero CSS/SVG-attribute conflict             */
+.bloom-target {
+  transform: scale(0);
+  transform-box: fill-box;
+  transform-origin: center center;
+  transition: transform 0.55s cubic-bezier(0.34,1.56,0.64,1);
+}
+.bloom-target.open { transform: scale(1); }
 
-  #scene {
-    width: 100%;
-    max-width: 600px;
-    padding: 20px 10px 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
+/* Sway — applied to the outer <g> that already holds the translate */
+@keyframes sw1 { 0%,100%{transform:rotate(-1.6deg)} 50%{transform:rotate(1.6deg)} }
+@keyframes sw2 { 0%,100%{transform:rotate(1.2deg)}  50%{transform:rotate(-2deg)  } }
+@keyframes sw3 { 0%,100%{transform:rotate(-2deg)  } 50%{transform:rotate(1.2deg) } }
+.sw1 { animation:sw1 4s   ease-in-out infinite; transform-box:fill-box; transform-origin:center 80%; }
+.sw2 { animation:sw2 4.6s ease-in-out infinite; transform-box:fill-box; transform-origin:center 80%; }
+.sw3 { animation:sw3 5.3s ease-in-out infinite; transform-box:fill-box; transform-origin:center 80%; }
 
-  #bouquet-wrap {
-    width: 100%;
-    max-width: 520px;
-  }
+#message {
+  max-width:450px; width:90%;
+  text-align:center;
+  margin:6px auto 50px;
+  opacity:0; transform:translateY(22px);
+  transition: opacity 2s ease, transform 2s ease;
+  padding:0 12px;
+}
+#message.show { opacity:1; transform:translateY(0); }
+#message p {
+  font-size: clamp(15px,4vw,21px);
+  line-height:1.82; color:#8b2252;
+  font-style:italic; letter-spacing:0.03em;
+}
 
-  #bouquet-svg {
-    width: 100%;
-    height: auto;
-    display: block;
-    overflow: visible;
-  }
-
-  #message {
-    max-width: 460px;
-    width: 90%;
-    text-align: center;
-    margin: 8px auto 50px;
-    opacity: 0;
-    transform: translateY(24px);
-    transition: opacity 2s ease, transform 2s ease;
-    padding: 0 12px;
-  }
-  #message.visible { opacity: 1; transform: translateY(0); }
-
-  #message p {
-    font-size: clamp(15px, 4.2vw, 21px);
-    line-height: 1.8;
-    color: #8b2252;
-    font-style: italic;
-    letter-spacing: 0.03em;
-  }
-
-  .heart-float {
-    position: fixed;
-    bottom: -40px;
-    pointer-events: none;
-    user-select: none;
-    animation: floatUp linear infinite;
-    opacity: 0;
-  }
-
-  @keyframes floatUp {
-    0%   { transform: translateY(0)   rotate(-8deg)  scale(0.9); opacity: 0; }
-    8%   { opacity: 0.55; }
-    92%  { opacity: 0.3; }
-    100% { transform: translateY(-105vh) rotate(8deg) scale(1.1); opacity: 0; }
-  }
-
-  @keyframes sway1 { 0%,100%{transform:rotate(-1.8deg)} 50%{transform:rotate(1.8deg)} }
-  @keyframes sway2 { 0%,100%{transform:rotate(1.2deg)}  50%{transform:rotate(-2.2deg)} }
-  @keyframes sway3 { 0%,100%{transform:rotate(-2.1deg)} 50%{transform:rotate(1.4deg)} }
+/* Floating hearts */
+.hf {
+  position:fixed; bottom:-36px;
+  pointer-events:none; user-select:none;
+  animation:fup linear infinite; opacity:0;
+}
+@keyframes fup {
+  0%  {transform:translateY(0)   rotate(-8deg); opacity:0}
+  8%  {opacity:.55}
+  92% {opacity:.28}
+  100%{transform:translateY(-108vh) rotate(8deg); opacity:0}
+}
 </style>
 </head>
 <body>
 <div id="scene">
   <div id="bouquet-wrap">
-    <svg id="bouquet-svg" viewBox="0 0 520 570" xmlns="http://www.w3.org/2000/svg"></svg>
+    <svg id="bouquet-svg" viewBox="0 0 500 560" xmlns="http://www.w3.org/2000/svg"></svg>
   </div>
   <div id="message"><p></p></div>
 </div>
 
 <script>
-// ── CHANGE THIS TEXT ─────────────────────────────────────────────────────────
+// ── EDIT MESSAGE HERE ────────────────────────────────────────────────────────
 const MESSAGE = "Ты самое лучшее, что случалось в моей жизни. Я очень рад, что мы с тобой вместе. Я очень сильно тебя люблю. Ты самая невообразимая женщина, которую я только встречал в своей жизни.";
 // ────────────────────────────────────────────────────────────────────────────
 
-const NS = "http://www.w3.org/2000/svg";
+const NS  = "http://www.w3.org/2000/svg";
 const svg = document.getElementById("bouquet-svg");
 
-function svgEl(tag, attrs, parent) {
+const mkEl = (tag, a, p) => {
   const e = document.createElementNS(NS, tag);
-  for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v);
-  if (parent) parent.appendChild(e);
+  for (const [k,v] of Object.entries(a||{})) e.setAttribute(k,v);
+  p && p.appendChild(e);
   return e;
-}
-const rand  = (a, b) => a + Math.random() * (b - a);
-const randI = (a, b) => Math.floor(rand(a, b + 1));
+};
+const rnd  = (a,b) => a + Math.random()*(b-a);
+const rndI = (a,b) => Math.floor(rnd(a,b+1));
 
-// Color sets: [outer petal, mid petal, inner petal, petal stroke, center]
-const COLORS = [
-  ["#ffd1dc","#f9a8be","#f2789f","#d45a82","#f5d060"],  // pink
-  ["#fce8ef","#f9c8d8","#f5a8bc","#d88aa8","#f8e060"],  // blush
-  ["#fff3e0","#ffddb0","#ffc07a","#d4905a","#f0d050"],  // peach
-  ["#fff8f0","#ffecd8","#ffd8b0","#c89a78","#f5d058"],  // cream
-  ["#fde0f0","#f9c0dc","#f09ac4","#c07098","#f8d858"],  // mauve
-  ["#ffe8e8","#ffc8cc","#f9a0a8","#d47880","#f4d055"],  // coral-pink
-  ["#fff0f8","#ffd8ec","#ffb8da","#d888b0","#f5d860"],  // light pink
-  ["#ffd8c8","#ffb898","#f99070","#c86848","#f0cc50"],  // peach-deep
+// Palette: [outer, mid, inner, stroke, center]
+const PAL = [
+  ["#ffd1dc","#f9a8be","#f07898","#c85878","#f5d060"],
+  ["#fce4ef","#f9c0d4","#f598b8","#d07898","#f8e060"],
+  ["#fff2e0","#ffddb0","#ffbe78","#d09050","#f0d050"],
+  ["#fff6ee","#ffecd8","#ffd8b0","#c89870","#f5d058"],
+  ["#fde0f0","#f9b8d8","#f090be","#c06890","#f8d858"],
+  ["#ffe6e6","#ffc0c8","#f998a8","#d07080","#f4d055"],
+  ["#fff0fa","#ffd4ec","#ffb0d8","#d080ac","#f5d860"],
+  ["#ffd4c0","#ffb498","#f99070","#c86848","#f0cc50"],
 ];
 
-// Draw one ranunculus flower; returns the <g> element
-function drawFlower(cx, cy, radius, colorSet, rotDeg) {
-  const [c0, c1, c2, stroke, centerCol] = colorSet;
+// ── Draw one ranunculus into parent <g> at local (0,0) ─────────────────────
+function drawRanunculus(parent, r, pal) {
+  const [c0,c1,c2,cs,cc] = pal;
 
-  const g = svgEl("g", {
-    transform: `translate(${cx} ${cy}) rotate(${rotDeg})`
-  }, svg);
-
-  // Layer definitions: [petalCount, distanceFrac, petalW, petalH, colorIndex, angleOffset]
+  // 8 layers of petals. Each petal = rotated ellipse around origin.
+  // layer: [count, distFrac, rx, ry, color]
   const layers = [
-    { n:5,  df:0.08, pw:0.30, ph:0.30, c:c2, ao:0   },
-    { n:6,  df:0.18, pw:0.32, ph:0.36, c:c2, ao:15  },
-    { n:7,  df:0.30, pw:0.34, ph:0.40, c:c1, ao:4   },
-    { n:8,  df:0.43, pw:0.34, ph:0.42, c:c1, ao:20  },
-    { n:9,  df:0.56, pw:0.33, ph:0.43, c:c0, ao:10  },
-    { n:10, df:0.68, pw:0.32, ph:0.43, c:c0, ao:0   },
-    { n:11, df:0.80, pw:0.30, ph:0.42, c:c0, ao:14  },
-    { n:12, df:0.91, pw:0.28, ph:0.40, c:c0, ao:7   },
+    [5,  0.10, r*.17, r*.25, c2],
+    [6,  0.20, r*.18, r*.27, c2],
+    [7,  0.32, r*.19, r*.29, c1],
+    [8,  0.44, r*.19, r*.30, c1],
+    [9,  0.56, r*.19, r*.30, c0],
+    [10, 0.67, r*.18, r*.29, c0],
+    [11, 0.78, r*.17, r*.28, c0],
+    [12, 0.88, r*.16, r*.26, c0],
   ];
 
-  layers.forEach(({ n, df, pw, ph, c, ao }) => {
-    const dist = radius * df;
-    const petalW = radius * pw;
-    const petalH = radius * ph;
+  layers.forEach(([n, df, rx, ry, col]) => {
+    const dist = r * df;
     for (let i = 0; i < n; i++) {
-      const angleDeg = (360 / n) * i + ao;
-      const a = angleDeg * Math.PI / 180;
-      // Each petal is an ellipse rotated to point outward
-      const px = Math.cos(a) * dist;
-      const py = Math.sin(a) * dist;
-      svgEl("ellipse", {
-        cx: px, cy: py,
-        rx: petalW * 0.5,
-        ry: petalH * 0.5,
-        fill: c,
-        stroke: stroke,
-        "stroke-width": "0.25",
-        opacity: "0.94",
-        transform: `rotate(${angleDeg}, ${px}, ${py})`
-      }, g);
+      const deg = (360/n)*i;
+      const rad = deg * Math.PI/180;
+      // Center of this ellipse is offset from origin
+      const ex = Math.cos(rad) * dist;
+      const ey = Math.sin(rad) * dist;
+      mkEl("ellipse", {
+        cx: ex, cy: ey,
+        rx, ry,
+        fill: col,
+        stroke: cs,
+        "stroke-width": "0.3",
+        opacity: "0.92",
+        transform: `rotate(${deg}, ${ex}, ${ey})`
+      }, parent);
     }
   });
 
   // Center
-  svgEl("circle", { cx:0, cy:0, r: radius*0.13, fill: centerCol, stroke:"#c8a030", "stroke-width":"0.4" }, g);
-  svgEl("circle", { cx:0, cy:0, r: radius*0.06, fill:"#e0b820" }, g);
-
-  return g;
+  mkEl("circle", {cx:0,cy:0, r:r*.14, fill:cc, stroke:"#c4a028","stroke-width":"0.5"}, parent);
+  mkEl("circle", {cx:0,cy:0, r:r*.07, fill:"#ddb020"}, parent);
 }
 
-// ── Layout: 101 flowers in a phyllotaxis spiral ─────────────────────────────
-const BX = 260, BY = 270;  // bouquet center
-const TOTAL = 101;
-const GOLDEN = 137.508 * Math.PI / 180;
-const MAX_RADIUS = 150;
+// ── 101 positions via golden-angle spiral ──────────────────────────────────
+const BX = 250, BY = 268, MAX_R = 148, TOTAL = 101;
+const PHI = 137.508 * Math.PI / 180;
 
-const positions = [];
+const pos = [];
 for (let i = 0; i < TOTAL; i++) {
   const t = i / TOTAL;
-  const r = Math.sqrt(t) * MAX_RADIUS;
-  const theta = i * GOLDEN;
-  positions.push({
-    x: BX + r * Math.cos(theta),
-    y: BY + r * Math.sin(theta) * 0.82,
-    size: Math.max(12, 28 - t * 12),
-    colors: COLORS[randI(0, COLORS.length - 1)],
-    rot: rand(-180, 180),
+  const r = Math.sqrt(t) * MAX_R;
+  const a = i * PHI;
+  pos.push({
+    x: BX + r*Math.cos(a),
+    y: BY + r*Math.sin(a)*0.80,   // slight vertical squash for natural look
+    sz: Math.max(13, 30 - t*14),  // center flowers bigger
+    pal: PAL[rndI(0, PAL.length-1)],
+    rot: rnd(-180, 180),
   });
 }
-// Sort by y → front flowers render last (on top)
-positions.sort((a, b) => a.y - b.y);
+pos.sort((a,b) => a.y - b.y); // back-to-front
 
-// ── Wrapping paper (below flowers in draw order) ─────────────────────────────
-const wrapLayer = svgEl("g", {}, svg);
+// ── Wrapping paper layer ───────────────────────────────────────────────────
+const wG = mkEl("g",{},svg);
 
-// Drop shadow
-svgEl("ellipse", { cx: BX, cy: 510, rx:115, ry:16, fill:"rgba(0,0,0,0.06)" }, wrapLayer);
+mkEl("ellipse",{cx:BX,cy:506,rx:118,ry:17,fill:"rgba(0,0,0,0.055)"},wG);
 
-// Paper panels
-svgEl("path", {
-  d: `M ${BX-110} 385 L ${BX-46} 508 L ${BX} 518 L ${BX} 385 Z`,
-  fill:"#fde4ef", stroke:"#f0c0d8", "stroke-width":"1"
-}, wrapLayer);
-svgEl("path", {
-  d: `M ${BX+110} 385 L ${BX+46} 508 L ${BX} 518 L ${BX} 385 Z`,
-  fill:"#fcd8e8", stroke:"#f0c0d8", "stroke-width":"1"
-}, wrapLayer);
-svgEl("path", {
-  d: `M ${BX-90} 398 Q ${BX} 422 ${BX+90} 398 L ${BX+52} 512 Q ${BX} 522 ${BX-52} 512 Z`,
-  fill:"#fff0f6", stroke:"#f4c0d4", "stroke-width":"1"
-}, wrapLayer);
+// Left & right panels
+mkEl("path",{d:`M${BX-112} 382 L${BX-46} 506 L${BX} 516 L${BX} 382 Z`,
+  fill:"#fde4f0",stroke:"#efc0d4","stroke-width":"1"},wG);
+mkEl("path",{d:`M${BX+112} 382 L${BX+46} 506 L${BX} 516 L${BX} 382 Z`,
+  fill:"#fcd8e8",stroke:"#efc0d4","stroke-width":"1"},wG);
+// Front panel
+mkEl("path",{d:`M${BX-93} 396 Q${BX} 420 ${BX+93} 396 L${BX+53} 513 Q${BX} 523 ${BX-53} 513 Z`,
+  fill:"#fff0f6",stroke:"#f4c0d4","stroke-width":"1"},wG);
+// Dots on wrap
+for(let i=0;i<22;i++)
+  mkEl("circle",{cx:rnd(BX-82,BX+82),cy:rnd(406,510),r:rnd(1.8,3.8),fill:"#f4a8c8",opacity:"0.4"},wG);
 
-// Polka dots
-for (let i = 0; i < 20; i++) {
-  svgEl("circle", {
-    cx: rand(BX-80, BX+80), cy: rand(408, 510),
-    r: rand(2, 4), fill:"#f4b0c8", opacity:"0.45"
-  }, wrapLayer);
-}
-
-// Ribbon
-svgEl("rect", { x:BX-95, y:378, width:190, height:15, rx:5, fill:"#ef7090" }, wrapLayer);
-// Bow loops
-svgEl("ellipse", { cx:BX-24, cy:381, rx:24, ry:14, fill:"#e85078",
-  transform:`rotate(-28,${BX-24},381)` }, wrapLayer);
-svgEl("ellipse", { cx:BX+24, cy:381, rx:24, ry:14, fill:"#e85078",
-  transform:`rotate(28,${BX+24},381)` }, wrapLayer);
+// Ribbon bar
+mkEl("rect",{x:BX-96,y:376,width:192,height:14,rx:5,fill:"#ee6888"},wG);
+// Bow left
+mkEl("ellipse",{cx:BX-25,cy:379,rx:26,ry:15,fill:"#e45070",
+  transform:`rotate(-30,${BX-25},379)`},wG);
+// Bow right
+mkEl("ellipse",{cx:BX+25,cy:379,rx:26,ry:15,fill:"#e45070",
+  transform:`rotate(30,${BX+25},379)`},wG);
 // Knot
-svgEl("circle", { cx:BX, cy:385, r:10, fill:"#d03060" }, wrapLayer);
-svgEl("circle", { cx:BX, cy:385, r:5,  fill:"#b82050" }, wrapLayer);
+mkEl("circle",{cx:BX,cy:383,r:11,fill:"#cc2e56"},wG);
+mkEl("circle",{cx:BX,cy:383,r:5,fill:"#aa1840"},wG);
 
-// ── Stems ─────────────────────────────────────────────────────────────────
-const stemsLayer = svgEl("g", { opacity:"0.85" }, svg);
-positions.forEach(p => {
-  svgEl("line", {
-    x1: p.x, y1: p.y + p.size * 0.35,
-    x2: BX + (p.x - BX) * 0.12, y2: 385,
-    stroke:"#5a8a45",
-    "stroke-width": Math.max(0.6, p.size * 0.055),
-    "stroke-linecap":"round",
-    opacity:"0.65"
-  }, stemsLayer);
+// ── Stems layer ────────────────────────────────────────────────────────────
+const stG = mkEl("g",{},svg);
+pos.forEach(p=>{
+  mkEl("line",{
+    x1:p.x, y1:p.y + p.sz*.3,
+    x2:BX+(p.x-BX)*.10, y2:383,
+    stroke:"#588840",
+    "stroke-width":Math.max(0.7, p.sz*.06),
+    "stroke-linecap":"round", opacity:"0.6"
+  },stG);
 });
 
 // ── Leaves ────────────────────────────────────────────────────────────────
-const leavesLayer = svgEl("g", {}, svg);
-const leafData = [
-  [BX-88, 358, -1], [BX+78, 352, 1], [BX-55, 372, -1],
-  [BX+60, 368, 1],  [BX-108, 345, -1],[BX+95, 342, 1],
-  [BX-30, 380, -1], [BX+38, 376, 1],
-];
-leafData.forEach(([lx, ly, side]) => {
-  svgEl("path", {
-    d: `M ${lx} ${ly} Q ${lx+side*26} ${ly-24} ${lx+side*14} ${ly-42} Q ${lx+side*2} ${ly-22} ${lx} ${ly}`,
-    fill:"#68aa52", stroke:"#4a8a38", "stroke-width":"0.6", opacity:"0.88"
-  }, leavesLayer);
+const lG = mkEl("g",{},svg);
+[[BX-90,356,-1],[BX+80,350,1],[BX-56,370,-1],[BX+62,366,1],
+ [BX-110,344,-1],[BX+98,340,1],[BX-30,378,-1],[BX+36,374,1]]
+.forEach(([lx,ly,s])=>{
+  mkEl("path",{
+    d:`M${lx} ${ly} Q${lx+s*28} ${ly-25} ${lx+s*15} ${ly-44} Q${lx+s*2} ${ly-22} ${lx} ${ly}`,
+    fill:"#66aa50",stroke:"#488838","stroke-width":"0.6",opacity:"0.87"
+  },lG);
 });
 
-// ── Draw all flowers ───────────────────────────────────────────────────────
-const flowerData = positions.map((p, i) => {
-  const fe = drawFlower(p.x, p.y, p.size, p.colors, p.rot);
-  fe.style.opacity = "0";
-  fe.style.transformOrigin = `${p.x}px ${p.y}px`;
-  fe.style.transform = `translate(${p.x}px,${p.y}px) scale(0) translate(${-p.x}px,${-p.y}px)`;
-  return { el: fe, x: p.x, y: p.y, swayClass: ["sway1","sway2","sway3"][i % 3] };
+// ── Flowers ────────────────────────────────────────────────────────────────
+// Architecture: outer <g translate> holds position (SVG attr, never touched by JS).
+//               inner <g.bloom-target> is what we scale via CSS class toggle.
+// This avoids any CSS↔SVG-attribute transform conflict.
+const swayClasses = ["sw1","sw2","sw3"];
+const bloomTargets = [];
+
+pos.forEach((p, i) => {
+  // Outer group: just position + rotation (SVG attribute — never modified by JS)
+  const outer = mkEl("g",{transform:`translate(${p.x} ${p.y}) rotate(${p.rot})`},svg);
+
+  // Inner group: bloom scale target
+  const inner = mkEl("g",{},outer);
+  inner.classList.add("bloom-target");
+  bloomTargets.push({ el:inner, outer, swayClass: swayClasses[i%3] });
+
+  drawRanunculus(inner, p.sz, p.pal);
 });
 
-// ── Bloom animation ────────────────────────────────────────────────────────
-flowerData.forEach(({ el: fe, swayClass }, i) => {
-  setTimeout(() => {
-    fe.style.transition = "opacity 0.35s ease, transform 0.5s cubic-bezier(0.34,1.56,0.64,1)";
-    fe.style.opacity = "1";
-    fe.style.transform = "none";
-    setTimeout(() => {
-      fe.style.transition = "";
-      fe.style.transform = "";
-      fe.style.animation = `${swayClass} ${3.5 + (i % 7) * 0.3}s ease-in-out infinite`;
-      fe.style.transformBox = "fill-box";
-      fe.style.transformOrigin = "center bottom";
-    }, 650);
-  }, 200 + i * 35);
+// ── Trigger bloom one by one ───────────────────────────────────────────────
+bloomTargets.forEach(({el, outer, swayClass}, i) => {
+  setTimeout(()=>{
+    el.classList.add("open");
+    // After open transition, switch to sway on the outer group
+    setTimeout(()=>{
+      el.style.transition = "none"; // stop transition interference
+      outer.classList.add(swayClass);
+    }, 700);
+  }, 150 + i*32);
 });
 
-// Show message
-setTimeout(() => {
+// ── Show text ──────────────────────────────────────────────────────────────
+setTimeout(()=>{
   document.querySelector("#message p").textContent = MESSAGE;
-  document.getElementById("message").classList.add("visible");
-}, 200 + TOTAL * 35 + 900);
+  document.getElementById("message").classList.add("show");
+}, 150 + TOTAL*32 + 1000);
 
 // ── Floating hearts ────────────────────────────────────────────────────────
-const HEARTS = ["♥","❤","💕","🌸","✿","❀"];
-const heartColors = ["#f47090","#e85070","#ffa0b8","#ff80a0","#f090a8"];
-for (let i = 0; i < 20; i++) {
+"♥❤💕🌸✿❀".split("").concat(["♥","❤","💕"]).forEach((ch,i)=>{
   const h = document.createElement("span");
-  h.className = "heart-float";
-  h.textContent = HEARTS[randI(0, HEARTS.length-1)];
-  h.style.left = rand(1, 97) + "vw";
-  h.style.fontSize = rand(10, 20) + "px";
-  h.style.animationDuration = rand(7, 16) + "s";
-  h.style.animationDelay = rand(0, 12) + "s";
-  h.style.color = heartColors[randI(0, heartColors.length-1)];
+  h.className = "hf";
+  h.textContent = ch;
+  h.style.cssText = `left:${rnd(2,96)}vw;font-size:${rnd(10,19)}px;`
+    +`animation-duration:${rnd(7,15)}s;animation-delay:${rnd(0,13)}s;`
+    +`color:${["#f47090","#e85070","#ffaac0","#ff80a0","#f090a8"][rndI(0,4)]};`;
   document.body.appendChild(h);
-}
+});
 </script>
 </body>
 </html>
